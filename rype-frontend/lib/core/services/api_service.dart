@@ -9,17 +9,31 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      // Increased timeouts for production/slow connections
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
+      sendTimeout: const Duration(seconds: 60),
+      validateStatus: (status) => status != null && status < 500,
     ),
   )..interceptors.add(
       InterceptorsWrapper(
+        onRequest: (options, handler) {
+          print('🔵 [API] ${options.method} ${options.path}');
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          print('🟢 [API] ${response.statusCode} ${response.requestOptions.path}');
+          return handler.next(response);
+        },
         onError: (error, handler) {
+          print('🔴 [API ERROR] ${error.type}: ${error.message}');
           if (error.type == DioExceptionType.connectionTimeout) {
-            print('Connection timeout: ${error.message}');
+            print('⏱️ Connection timeout - Backend may be slow or unreachable');
           } else if (error.type == DioExceptionType.receiveTimeout) {
-            print('Receive timeout: ${error.message}');
+            print('⏱️ Receive timeout - Response taking too long');
+          } else if (error.type == DioExceptionType.unknown) {
+            print('❌ Network error - Check internet connection and API URL');
+            print('   Current API URL: ${ApiConstants.baseUrl}');
           }
           return handler.next(error);
         },
