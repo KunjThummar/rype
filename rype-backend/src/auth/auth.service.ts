@@ -9,6 +9,9 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
 import { UsersService } from '../users/users.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { LoginResponseDto, RegisterResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +20,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(data: any) {
+  async register(data: RegisterDto): Promise<RegisterResponseDto> {
     const email = data.email.trim().toLowerCase();
     const userExists = await this.usersService.findByEmail(email);
 
@@ -35,16 +38,20 @@ export class AuthService {
 
     return {
       success: true,
-      user,
+      user: {
+        _id: user._id.toString(),
+        email: user.email,
+        fullName: user.fullName,
+      },
     };
   }
 
-  async login(data: any) {
+  async login(data: LoginDto): Promise<LoginResponseDto> {
     const email = data.email.trim().toLowerCase();
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid Credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const storedPassword = user.password ?? '';
@@ -56,7 +63,7 @@ export class AuthService {
       : data.password === storedPassword;
 
     if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid Credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!isBcryptHash) {

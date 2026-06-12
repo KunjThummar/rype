@@ -16,6 +16,7 @@ import 'screens/transactions_screen.dart';
 import 'screens/what_if_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_controller.dart';
+import 'core/services/storage_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,8 +31,21 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late Future<String?> _tokenCheck;
+
+  @override
+  void initState() {
+    super.initState();
+    _tokenCheck = StorageService.getToken();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +57,20 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeController.mode,
-      initialRoute: '/login',
+      home: FutureBuilder<String?>(
+        future: _tokenCheck,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          
+          // Route to dashboard if token exists, else to login
+          final hasToken = snapshot.data != null;
+          return hasToken ? const DashboardScreen() : const LoginScreen();
+        },
+      ),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
