@@ -13,6 +13,9 @@ class AuthService {
         },
       );
 
+    print('BASE URL: ${ApiService.dio.options.baseUrl}');
+    print(response.data);
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data != null && data['success'] == true) {
@@ -45,6 +48,9 @@ class AuthService {
           'password': password,
         },
       );
+
+    print('BASE URL: ${ApiService.dio.options.baseUrl}');
+    print(response.data);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
