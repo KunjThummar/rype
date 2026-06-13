@@ -79,6 +79,14 @@ class _StocksScreenState extends State<StocksScreen> {
             child: Chip(label: Text('${_stocks.length} holdings')),
           ),
       ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/add-stock');
+          _loadStocks();
+        },
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Stock'),
+      ),
       child: _loading
           ? const LoadingSkeleton()
           : _error != null
@@ -94,21 +102,13 @@ class _StocksScreenState extends State<StocksScreen> {
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                         itemCount: _stocks.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, index) => _StockCard(
                           stock: _stocks[index],
                           onDelete: () => _deleteStock(_stocks[index].id, _stocks[index].symbol),
                         ),
                       ),
                     ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () async {
-        await Navigator.pushNamed(context, '/add-stock');
-        _loadStocks();
-      },
-      icon: const Icon(Icons.add_rounded),
-      label: const Text('Add Stock'),
-    ),
     );
   }
 }

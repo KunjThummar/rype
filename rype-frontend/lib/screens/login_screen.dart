@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/constants/api_constants.dart';
 import '../core/services/auth_service.dart';
-import '../theme/app_theme.dart';
 import '../widgets/finance_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -30,7 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    print('Base URL: ${ApiConstants.baseUrl}');
     try {
       final success = await AuthService.login(
         _emailController.text.trim(),

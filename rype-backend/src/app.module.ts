@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { HealthController } from './health.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
@@ -32,9 +33,35 @@ import { ImportsModule } from './imports/imports.module';
 
     MongooseModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGODB_URI'),
-      }),
+      useFactory: (config: ConfigService) => {
+        const uri = config.get<string>('MONGODB_URI');
+
+        if (!uri) {
+          throw new Error('MONGODB_URI is missing. Add it to your deployed backend environment variables.');
+        }
+
+        return {
+          uri,
+          serverSelectionTimeoutMS: 10000,
+          connectTimeoutMS: 10000,
+          socketTimeoutMS: 45000,
+          maxPoolSize: 10,
+          retryWrites: true,
+          connectionFactory: (connection: Connection) => {
+            connection.on('connected', () => {
+              console.log('MongoDB connected');
+            });
+            connection.on('disconnected', () => {
+              console.warn('MongoDB disconnected');
+            });
+            connection.on('error', (error) => {
+              console.error('MongoDB connection error:', error.message);
+            });
+
+            return connection;
+          },
+        };
+      },
     }),
 
     UsersModule,

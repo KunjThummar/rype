@@ -52,6 +52,14 @@ class _MutualFundsScreenState extends State<MutualFundsScreen> {
   Widget build(BuildContext context) {
     return PremiumScaffold(
       title: 'Mutual Funds',
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/add-mutual-fund');
+          loadFunds();
+        },
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Fund'),
+      ),
       child: loading
           ? const LoadingSkeleton()
           : error != null
@@ -67,7 +75,7 @@ class _MutualFundsScreenState extends State<MutualFundsScreen> {
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                         itemCount: funds.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final fund = funds[index];
                           final units = asDouble(fund['units']);
@@ -116,14 +124,6 @@ class _MutualFundsScreenState extends State<MutualFundsScreen> {
                         },
                       ),
                     ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/add-mutual-fund');
-          loadFunds();
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Fund'),
-      ),
     );
   }
 }

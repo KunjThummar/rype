@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
+
 import 'api_service.dart';
 import 'storage_service.dart';
 
 class AuthService {
-  static const int _maxRetries = 3;
+  static const int _maxRetries = 2;
   static const Duration _retryDelay = Duration(seconds: 2);
 
   static Future<bool> login(String email, String password) async {
@@ -12,8 +13,6 @@ class AuthService {
 
     while (retries < _maxRetries) {
       try {
-        print('📝 Login attempt ${retries + 1}/$_maxRetries for: $email');
-        
         final response = await ApiService.dio.post(
           '/auth/login',
           data: {
@@ -22,78 +21,31 @@ class AuthService {
           },
         );
 
-        print('Login Response Status: ${response.statusCode}');
-        print('Login Response Data: ${response.data}');
+        final data = response.data;
+        final token = data is Map<String, dynamic> ? data['token'] : null;
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final data = response.data;
-          if (data != null && data['success'] == true) {
-            final token = data['token'];
-            if (token != null && token.isNotEmpty) {
-              await StorageService.saveToken(token);
-              print('✅ Token saved successfully');
-              return true;
-            } else {
-              throw Exception('No token received from server');
-            }
-          }
+        if (data is Map<String, dynamic> && data['success'] == true && token is String && token.isNotEmpty) {
+          await StorageService.saveToken(token);
+          return true;
         }
-        throw Exception('Login failed: Invalid response format');
+
+        throw Exception('Login failed: invalid server response');
       } on DioException catch (e) {
         lastError = e;
-        print('❌ DioException attempt $retries: ${e.type} - ${e.message}');
-        print('Response: ${e.response?.data}');
-        
-        // Check if this is a retryable error
-        bool isRetryable = e.type == DioExceptionType.connectionTimeout ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.sendTimeout ||
-            (e.response?.statusCode ?? 0) >= 500; // Server errors
 
-        retries++;
-        
-        if (isRetryable && retries < _maxRetries) {
-          print('🔄 Retrying in ${_retryDelay.inSeconds}s...');
+        if (_isRetryable(e) && retries + 1 < _maxRetries) {
+          retries++;
           await Future.delayed(_retryDelay);
           continue;
-        } else {
-          // Final error - not retryable or max retries reached
-          final message = e.response?.data?['message'];
-          if (message is List) {
-            throw Exception(message.join(', '));
-          }
-          
-          if (e.type == DioExceptionType.connectionTimeout ||
-              e.type == DioExceptionType.receiveTimeout ||
-              e.type == DioExceptionType.sendTimeout) {
-            throw Exception('Connection timeout after $retries attempts. Please check:\n'
-                '1. Internet connection\n'
-                '2. Backend URL: ${ApiService.dio.options.baseUrl}\n'
-                '3. Backend server is running');
-          }
-          
-          if (e.type == DioExceptionType.unknown) {
-            throw Exception('Network error: ${e.message}\n'
-                'Please check your internet connection and API URL');
-          }
-          
-          throw Exception(message ?? e.message ?? 'Invalid credentials');
         }
+
+        throw Exception(_messageFromDioError(e, 'Invalid credentials'));
       } catch (e) {
-        print('❌ Exception attempt $retries: $e');
-        retries++;
-        
-        if (retries < _maxRetries) {
-          print('🔄 Retrying in ${_retryDelay.inSeconds}s...');
-          await Future.delayed(_retryDelay);
-        } else {
-          throw Exception('Failed to login after $retries attempts: $e');
-        }
+        throw Exception(e.toString().replaceFirst('Exception: ', ''));
       }
     }
-    
-    // Max retries exceeded
-    throw Exception('Login failed after $_maxRetries attempts. Last error: ${lastError?.message}');
+
+    throw Exception('Login failed. Last error: ${lastError?.message}');
   }
 
   static Future<bool> register(String fullName, String email, String password) async {
@@ -102,8 +54,6 @@ class AuthService {
 
     while (retries < _maxRetries) {
       try {
-        print('📝 Register attempt ${retries + 1}/$_maxRetries for: $email');
-        
         final response = await ApiService.dio.post(
           '/auth/register',
           data: {
@@ -113,78 +63,85 @@ class AuthService {
           },
         );
 
-        print('Register Response Status: ${response.statusCode}');
-        print('Register Response Data: ${response.data}');
+        final data = response.data;
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final data = response.data;
-          if (data != null && data['success'] == true) {
-            print('✅ Registration successful');
-            return true;
-          }
+        if (data is Map<String, dynamic> && data['success'] == true) {
+          return true;
         }
-        throw Exception('Registration failed: Invalid response format');
+
+        throw Exception('Registration failed: invalid server response');
       } on DioException catch (e) {
         lastError = e;
-        print('❌ DioException attempt $retries: ${e.type} - ${e.message}');
-        print('Response: ${e.response?.data}');
-        
-        bool isRetryable = e.type == DioExceptionType.connectionTimeout ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.sendTimeout ||
-            (e.response?.statusCode ?? 0) >= 500;
 
-        retries++;
-        
-        if (isRetryable && retries < _maxRetries) {
-          print('🔄 Retrying in ${_retryDelay.inSeconds}s...');
+        if (_isRetryable(e) && retries + 1 < _maxRetries) {
+          retries++;
           await Future.delayed(_retryDelay);
           continue;
-        } else {
-          final message = e.response?.data?['message'];
-          if (message is List) {
-            throw Exception(message.join(', '));
-          }
-          
-          if (e.type == DioExceptionType.connectionTimeout ||
-              e.type == DioExceptionType.receiveTimeout ||
-              e.type == DioExceptionType.sendTimeout) {
-            throw Exception('Connection timeout after $retries attempts. Please check:\n'
-                '1. Internet connection\n'
-                '2. Backend URL: ${ApiService.dio.options.baseUrl}\n'
-                '3. Backend server is running');
-          }
-          
-          if (e.type == DioExceptionType.unknown) {
-            throw Exception('Network error: ${e.message}\n'
-                'Please check your internet connection and API URL');
-          }
-          
-          throw Exception(message ?? e.message ?? 'Failed to register');
         }
+
+        throw Exception(_messageFromDioError(e, 'Failed to register'));
       } catch (e) {
-        print('❌ Exception attempt $retries: $e');
-        retries++;
-        
-        if (retries < _maxRetries) {
-          print('🔄 Retrying in ${_retryDelay.inSeconds}s...');
-          await Future.delayed(_retryDelay);
-        } else {
-          throw Exception('Failed to register after $retries attempts: $e');
-        }
+        throw Exception(e.toString().replaceFirst('Exception: ', ''));
       }
     }
-    
-    throw Exception('Registration failed after $_maxRetries attempts. Last error: ${lastError?.message}');
+
+    throw Exception('Registration failed. Last error: ${lastError?.message}');
   }
 
   static Future<void> logout() async {
-    try {
-      await StorageService.logout();
-      print('✅ Logged out successfully');
-    } catch (e) {
-      print('❌ Error logging out: $e');
-      rethrow;
+    await StorageService.logout();
+  }
+
+  static bool _isRetryable(DioException error) {
+    return error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.connectionError ||
+        (error.response?.statusCode ?? 0) >= 500;
+  }
+
+  static String _messageFromDioError(DioException error, String fallback) {
+    final statusCode = error.response?.statusCode;
+    final responseData = error.response?.data;
+    final serverMessage = _extractServerMessage(responseData);
+
+    if (serverMessage != null && serverMessage.isNotEmpty) {
+      return serverMessage;
     }
+
+    if (statusCode == 401) {
+      return 'Invalid email or password';
+    }
+
+    if (statusCode == 400 || statusCode == 409) {
+      return fallback;
+    }
+
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.unknown) {
+      return 'Cannot reach the server. Please check your internet connection or try again in a moment.';
+    }
+
+    return error.message ?? fallback;
+  }
+
+  static String? _extractServerMessage(dynamic data) {
+    if (data is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final message = data['message'];
+    if (message is String) {
+      return message;
+    }
+
+    if (message is List) {
+      return message.join(', ');
+    }
+
+    return null;
   }
 }

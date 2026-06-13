@@ -35,9 +35,12 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT) || 4000;
 
-  await app.listen(port);
-  logger.log(`Rype backend running on http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Rype backend running on port ${port}`);
   logger.log(`Swagger docs at http://localhost:${port}/api`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  logger.error('Failed to start Rype backend', error);
+  process.exit(1);
+});
