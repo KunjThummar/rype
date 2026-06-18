@@ -81,9 +81,44 @@ export class MarketDataService {
     if (cached) return cached;
 
     try {
+      const alphaResult = await this.getAlphaVantagePrice(normalizedSymbol);
+      if (alphaResult.price !== null && alphaResult.price > 0) {
+        this.setCached(cacheKey, alphaResult);
+        return alphaResult;
+      }
+
+      const yahooResult = await this.getYahooPrice(normalizedSymbol);
+      this.setCached(cacheKey, yahooResult);
+      return yahooResult;
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to fetch price for ${normalizedSymbol}: ${error.message}`,
+      );
+      return {
+        symbol: normalizedSymbol,
+        price: null,
+        change: 0,
+        changePercent: '0%',
+        source: 'error',
+        error: error.message,
+      };
+    }
+  }
+
+  private async getAlphaVantagePrice(
+    normalizedSymbol: string,
+  ): Promise<StockPriceResult> {
+    try {
       const apiKey = this.configService.get<string>('STOCK_API_KEY');
       if (!apiKey) {
-        throw new Error('STOCK_API_KEY is missing in environment variables');
+        return {
+          symbol: normalizedSymbol,
+          price: null,
+          change: 0,
+          changePercent: '0%',
+          source: 'alpha_vantage',
+          error: 'STOCK_API_KEY is missing',
+        };
       }
 
       const response = await this.withRetry(() =>
@@ -111,7 +146,7 @@ export class MarketDataService {
         };
       }
 
-      const result = {
+      return {
         symbol: normalizedSymbol,
         price: parseFloat(quote['05. price']),
         open: parseFloat(quote['02. open']),
@@ -123,13 +158,7 @@ export class MarketDataService {
         latestTradingDay: quote['07. latest trading day'],
         source: 'alpha_vantage',
       };
-
-      this.setCached(cacheKey, result);
-      return result;
     } catch (error: any) {
-      this.logger.error(
-        `Failed to fetch price for ${normalizedSymbol}: ${error.message}`,
-      );
       return {
         symbol: normalizedSymbol,
         price: null,
@@ -139,6 +168,80 @@ export class MarketDataService {
         error: error.message,
       };
     }
+  }
+
+  private async getYahooPrice(
+    normalizedSymbol: string,
+  ): Promise<StockPriceResult> {
+    const candidates = this.getYahooSymbolCandidates(normalizedSymbol);
+
+    for (const yahooSymbol of candidates) {
+      try {
+        const response = await this.withRetry(() =>
+          axios.get(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+              yahooSymbol,
+            )}`,
+            {
+              params: { interval: '1d', range: '5d' },
+              timeout: 10000,
+            },
+          ),
+        );
+
+        const result = response.data?.chart?.result?.[0];
+        const meta = result?.meta;
+        const price = Number(meta?.regularMarketPrice);
+
+        if (!Number.isFinite(price) || price <= 0) {
+          continue;
+        }
+
+        const previousClose = Number(
+          meta?.previousClose ?? meta?.chartPreviousClose ?? 0,
+        );
+        const change = previousClose > 0 ? price - previousClose : 0;
+        const changePercent =
+          previousClose > 0
+            ? `${((change / previousClose) * 100).toFixed(2)}%`
+            : '0%';
+
+        return {
+          symbol: normalizedSymbol,
+          price,
+          previousClose,
+          change,
+          changePercent,
+          latestTradingDay: meta?.regularMarketTime
+            ? new Date(meta.regularMarketTime * 1000)
+                .toISOString()
+                .substring(0, 10)
+            : undefined,
+          source: `yahoo:${yahooSymbol}`,
+        };
+      } catch (error: any) {
+        this.logger.warn(
+          `Yahoo quote failed for ${yahooSymbol}: ${error.message}`,
+        );
+      }
+    }
+
+    return {
+      symbol: normalizedSymbol,
+      price: null,
+      change: 0,
+      changePercent: '0%',
+      source: 'yahoo',
+      error: 'No data',
+    };
+  }
+
+  private getYahooSymbolCandidates(symbol: string) {
+    if (symbol.includes('.') || symbol.includes(':')) {
+      return [symbol.replace(':', '.')];
+    }
+
+    return [`${symbol}.NS`, `${symbol}.BO`, symbol];
   }
 
   /**

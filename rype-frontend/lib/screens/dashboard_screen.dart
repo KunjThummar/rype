@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,6 +20,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   String? _error;
   DashboardSummary? _summary;
+  bool _hasRefreshedMarket = false;
 
   @override
   void initState() {
@@ -25,19 +28,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadDashboard());
   }
 
-  Future<void> _loadDashboard() async {
+  Future<void> _loadDashboard({bool refreshMarket = true}) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      await context.read<MarketProvider>().refresh();
       final summary = await DashboardService.getSummary();
       if (!mounted) return;
       setState(() {
         _summary = summary;
         _loading = false;
       });
+
+      if (refreshMarket && !_hasRefreshedMarket) {
+        _hasRefreshedMarket = true;
+        unawaited(_refreshMarketAndReload());
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -46,6 +53,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _refreshMarketAndReload() async {
+    await context.read<MarketProvider>().refresh();
+    if (!mounted) return;
+
+    try {
+      final summary = await DashboardService.getSummary();
+      if (!mounted) return;
+      setState(() => _summary = summary);
+    } catch (_) {
+      // Keep the already-loaded dashboard visible if live refresh fails.
+    }
+  }
+
+  Future<void> _handleManualRefresh() async {
+    _hasRefreshedMarket = false;
+    await _loadDashboard();
   }
 
   @override
@@ -84,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         summary.currentValue * (summary.allocation['mutualFunds'] ?? 0) / 100;
 
     return RefreshIndicator(
-      onRefresh: _loadDashboard,
+      onRefresh: _handleManualRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
