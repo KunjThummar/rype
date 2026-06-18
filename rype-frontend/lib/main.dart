@@ -14,6 +14,7 @@ import 'screens/stocks_screen.dart';
 import 'screens/tax_dashboard_screen.dart';
 import 'screens/transactions_screen.dart';
 import 'screens/what_if_screen.dart';
+import 'core/providers/market_provider.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_controller.dart';
 import 'core/services/storage_service.dart';
@@ -24,8 +25,13 @@ void main() {
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeController(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeController()),
+        ChangeNotifierProvider(
+          create: (_) => MarketProvider()..startAutoRefresh(),
+        ),
+      ],
       child: const MyApp(),
     ),
   );
@@ -65,7 +71,7 @@ class _MyAppState extends State<MyApp> {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          
+
           // Route to dashboard if token exists, else to login
           final hasToken = snapshot.data != null;
           return hasToken ? const DashboardScreen() : const LoginScreen();

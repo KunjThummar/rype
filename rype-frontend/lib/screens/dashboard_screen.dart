@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/providers/market_provider.dart';
 import '../core/services/dashboard_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
@@ -30,6 +31,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _error = null;
     });
     try {
+      await context.read<MarketProvider>().refresh();
       final summary = await DashboardService.getSummary();
       if (!mounted) return;
       setState(() {
@@ -39,7 +41,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Your portfolio summary could not be refreshed. Check your connection and try again.';
+        _error =
+            'Your portfolio summary could not be refreshed. Check your connection and try again.';
         _loading = false;
       });
     }
@@ -64,17 +67,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: _loading
             ? const LoadingSkeleton()
             : _error != null
-                ? ErrorState(message: _error!, onRetry: _loadDashboard)
-                : _buildContent(_summary!),
+            ? ErrorState(message: _error!, onRetry: _loadDashboard)
+            : _buildContent(_summary!),
       ),
     );
   }
 
   Widget _buildContent(DashboardSummary summary) {
     final isProfit = summary.totalProfitLoss >= 0;
-    final pnlColor = isProfit ? context.finance.success : context.finance.danger;
-    final stockValue = summary.currentValue * 0.62;
-    final mfValue = summary.currentValue * 0.38;
+    final pnlColor = isProfit
+        ? context.finance.success
+        : context.finance.danger;
+    final stockValue =
+        summary.currentValue * (summary.allocation['stocks'] ?? 0) / 100;
+    final mfValue =
+        summary.currentValue * (summary.allocation['mutualFunds'] ?? 0) / 100;
 
     return RefreshIndicator(
       onRefresh: _loadDashboard,
@@ -82,30 +89,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _PortfolioHero(summary: summary, pnlColor: pnlColor, isProfit: isProfit),
+          _PortfolioHero(
+            summary: summary,
+            pnlColor: pnlColor,
+            isProfit: isProfit,
+          ),
           const SizedBox(height: 16),
           ResponsiveGrid(
             itemHeight: 122,
             children: [
               MetricCard(
-                label: 'Total Investment',
-                value: formatCurrency(summary.totalInvestment),
-                icon: Icons.savings_outlined,
-              ),
-              MetricCard(
-                label: 'Current Value',
+                label: 'Portfolio Value',
                 value: formatCurrency(summary.currentValue),
                 icon: Icons.account_balance_wallet_outlined,
               ),
               MetricCard(
-                label: 'Total Profit',
-                value: '${isProfit ? '+' : ''}${formatCurrency(summary.totalProfitLoss)}',
-                icon: isProfit ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                label: "Today's Gain/Loss",
+                value:
+                    '${summary.todaysGainLoss >= 0 ? '+' : ''}${formatCurrency(summary.todaysGainLoss)}',
+                icon: summary.todaysGainLoss >= 0
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
+                accent: summary.todaysGainLoss >= 0
+                    ? context.finance.success
+                    : context.finance.danger,
+              ),
+              MetricCard(
+                label: 'Total Gain/Loss',
+                value:
+                    '${isProfit ? '+' : ''}${formatCurrency(summary.totalProfitLoss)}',
+                icon: isProfit
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
                 accent: pnlColor,
               ),
               MetricCard(
                 label: 'ROI',
-                value: '${isProfit ? '+' : ''}${summary.profitPercentage.toStringAsFixed(2)}%',
+                value:
+                    '${isProfit ? '+' : ''}${summary.profitPercentage.toStringAsFixed(2)}%',
                 icon: Icons.percent_rounded,
                 accent: pnlColor,
               ),
@@ -125,7 +146,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (!wide) {
                 return Column(
                   children: [
-                    for (final card in cards) ...[card, const SizedBox(height: 12)],
+                    for (final card in cards) ...[
+                      card,
+                      const SizedBox(height: 12),
+                    ],
                   ],
                 );
               }
@@ -176,31 +200,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final gainers = _MarketList(
                 title: 'Top Gainers',
                 positive: true,
-                rows: const [
-                  ('TCS', 'Tata Consultancy', 2.84),
-                  ('HDFCBANK', 'HDFC Bank', 1.92),
-                  ('INFY', 'Infosys', 1.47),
-                ],
+                rows: summary.topGainers,
               );
               final losers = _MarketList(
                 title: 'Top Losers',
                 positive: false,
-                rows: const [
-                  ('ITC', 'ITC Ltd', -1.38),
-                  ('SBIN', 'State Bank', -1.12),
-                  ('RELIANCE', 'Reliance Ind.', -0.86),
-                ],
+                rows: summary.topLosers,
               );
               if (!wide) {
-                return Column(children: [gainers, const SizedBox(height: 12), losers]);
+                return Column(
+                  children: [gainers, const SizedBox(height: 12), losers],
+                );
               }
-              return Row(children: [
-                Expanded(child: gainers),
-                const SizedBox(width: 12),
-                Expanded(child: losers),
-              ]);
+              return Row(
+                children: [
+                  Expanded(child: gainers),
+                  const SizedBox(width: 12),
+                  Expanded(child: losers),
+                ],
+              );
             },
           ),
+          const SizedBox(height: 22),
+          const SectionHeader(title: 'Recent Transactions'),
+          const SizedBox(height: 12),
+          _RecentTransactions(transactions: summary.recentTransactions),
           const SizedBox(height: 22),
           const SectionHeader(title: 'Quick Actions'),
           const SizedBox(height: 12),
@@ -208,12 +232,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
             minItemWidth: 150,
             itemHeight: 92,
             children: [
-              _ActionTile(icon: Icons.trending_up_rounded, label: 'Stocks', route: '/stocks'),
-              _ActionTile(icon: Icons.account_balance_rounded, label: 'Mutual Funds', route: '/mutual-funds'),
-              _ActionTile(icon: Icons.pie_chart_outline_rounded, label: 'Holdings', route: '/holdings'),
-              _ActionTile(icon: Icons.receipt_long_rounded, label: 'Transactions', route: '/transactions'),
-              _ActionTile(icon: Icons.request_quote_outlined, label: 'Tax Dashboard', route: '/tax-dashboard'),
-              _ActionTile(icon: Icons.calculate_outlined, label: 'What-If Analysis', route: '/what-if'),
+              _ActionTile(
+                icon: Icons.trending_up_rounded,
+                label: 'Stocks',
+                route: '/stocks',
+              ),
+              _ActionTile(
+                icon: Icons.account_balance_rounded,
+                label: 'Mutual Funds',
+                route: '/mutual-funds',
+              ),
+              _ActionTile(
+                icon: Icons.pie_chart_outline_rounded,
+                label: 'Holdings',
+                route: '/holdings',
+              ),
+              _ActionTile(
+                icon: Icons.receipt_long_rounded,
+                label: 'Transactions',
+                route: '/transactions',
+              ),
+              _ActionTile(
+                icon: Icons.request_quote_outlined,
+                label: 'Tax Dashboard',
+                route: '/tax-dashboard',
+              ),
+              _ActionTile(
+                icon: Icons.calculate_outlined,
+                label: 'What-If Analysis',
+                route: '/what-if',
+              ),
             ],
           ),
         ],
@@ -246,7 +294,10 @@ class _PortfolioHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Welcome back, Investor', style: Theme.of(context).textTheme.titleSmall),
+                    Text(
+                      'Welcome back, Investor',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                     const SizedBox(height: 8),
                     FittedBox(
                       fit: BoxFit.scaleDown,
@@ -260,7 +311,10 @@ class _PortfolioHero extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: pnlColor.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
@@ -269,14 +323,19 @@ class _PortfolioHero extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isProfit ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                      isProfit
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded,
                       color: pnlColor,
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${isProfit ? '+' : ''}${summary.profitPercentage.toStringAsFixed(2)}%',
-                      style: TextStyle(color: pnlColor, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: pnlColor,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -306,18 +365,32 @@ class _AllocationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Asset Allocation', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Asset Allocation',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 18),
           Center(
             child: SimplePieChart(
               values: [stockValue, mfValue],
-              colors: [Theme.of(context).colorScheme.primary, context.finance.chartD],
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                context.finance.chartD,
+              ],
             ),
           ),
           const SizedBox(height: 18),
-          _Legend(label: 'Stocks', color: Theme.of(context).colorScheme.primary, value: formatCurrency(stockValue)),
+          _Legend(
+            label: 'Stocks',
+            color: Theme.of(context).colorScheme.primary,
+            value: formatCurrency(stockValue),
+          ),
           const SizedBox(height: 8),
-          _Legend(label: 'Mutual Funds', color: context.finance.chartD, value: formatCurrency(mfValue)),
+          _Legend(
+            label: 'Mutual Funds',
+            color: context.finance.chartD,
+            value: formatCurrency(mfValue),
+          ),
         ],
       ),
     );
@@ -336,7 +409,10 @@ class _GrowthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Portfolio Growth', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Portfolio Growth',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 16),
           LineTrendChart(
             values: [
@@ -365,7 +441,10 @@ class _PerformanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Performance Trend', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Performance Trend',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 16),
           BarChart(
             labels: const ['1W', '1M', '3M', '1Y'],
@@ -378,7 +457,11 @@ class _PerformanceCard extends StatelessWidget {
 }
 
 class _Legend extends StatelessWidget {
-  const _Legend({required this.label, required this.color, required this.value});
+  const _Legend({
+    required this.label,
+    required this.color,
+    required this.value,
+  });
 
   final String label;
   final Color color;
@@ -388,9 +471,15 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
         Text(value, style: Theme.of(context).textTheme.labelLarge),
       ],
     );
@@ -398,10 +487,14 @@ class _Legend extends StatelessWidget {
 }
 
 class _MarketList extends StatelessWidget {
-  const _MarketList({required this.title, required this.rows, required this.positive});
+  const _MarketList({
+    required this.title,
+    required this.rows,
+    required this.positive,
+  });
 
   final String title;
-  final List<(String, String, double)> rows;
+  final List<DashboardAsset> rows;
   final bool positive;
 
   @override
@@ -413,14 +506,19 @@ class _MarketList extends StatelessWidget {
         children: [
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
+          if (rows.isEmpty)
+            Text('No assets yet', style: Theme.of(context).textTheme.bodySmall),
           for (final row in rows) ...[
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text(row.$1, style: Theme.of(context).textTheme.labelLarge),
-              subtitle: Text(row.$2),
+              title: Text(
+                row.name,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              subtitle: Text(row.type),
               trailing: Text(
-                '${row.$3 > 0 ? '+' : ''}${row.$3.toStringAsFixed(2)}%',
+                '${row.profitPercent > 0 ? '+' : ''}${row.profitPercent.toStringAsFixed(2)}%',
                 style: TextStyle(color: color, fontWeight: FontWeight.w800),
               ),
             ),
@@ -431,8 +529,46 @@ class _MarketList extends StatelessWidget {
   }
 }
 
+class _RecentTransactions extends StatelessWidget {
+  const _RecentTransactions({required this.transactions});
+
+  final List<DashboardTransaction> transactions;
+
+  @override
+  Widget build(BuildContext context) {
+    return FinanceCard(
+      child: transactions.isEmpty
+          ? Text(
+              'No recent transactions',
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          : Column(
+              children: [
+                for (final tx in transactions)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      tx.assetName,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    subtitle: Text(
+                      '${tx.transactionType} ${tx.quantity.toStringAsFixed(2)} ${tx.symbol}',
+                    ),
+                    trailing: Text(formatCurrency(tx.price)),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
 class _ActionTile extends StatelessWidget {
-  const _ActionTile({required this.icon, required this.label, required this.route});
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.route,
+  });
 
   final IconData icon;
   final String label;

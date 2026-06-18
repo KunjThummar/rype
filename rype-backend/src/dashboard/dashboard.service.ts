@@ -12,6 +12,10 @@ import {
 } from '../mutual-funds/schemas/mutual-fund.schema';
 
 import { BenchmarkService } from '../benchmark/benchmark.service';
+import {
+  Transaction,
+  TransactionDocument,
+} from '../transactions/schemas/transaction.schema';
 
 @Injectable()
 export class DashboardService {
@@ -21,6 +25,9 @@ export class DashboardService {
 
     @InjectModel(MutualFund.name)
     private mfModel: Model<MutualFundDocument>,
+
+    @InjectModel(Transaction.name)
+    private transactionModel: Model<TransactionDocument>,
 
     private benchmarkService: BenchmarkService,
   ) {}
@@ -33,6 +40,11 @@ export class DashboardService {
     const mutualFunds = await this.mfModel.find({
       userId,
     });
+
+    const recentTransactions = await this.transactionModel
+      .find({ userId })
+      .sort({ transactionDate: -1 })
+      .limit(5);
 
     const stockInvestment = stocks.reduce(
       (sum, stock) => sum + stock.investmentAmount,
@@ -49,6 +61,11 @@ export class DashboardService {
       0,
     );
 
+    const stockTodaysGainLoss = stocks.reduce(
+      (sum, stock) => sum + (stock.todaysGainLoss ?? 0),
+      0,
+    );
+
     const mfInvestment = mutualFunds.reduce(
       (sum, mf) => sum + mf.investmentAmount,
       0,
@@ -60,6 +77,11 @@ export class DashboardService {
     );
 
     const mfProfit = mutualFunds.reduce((sum, mf) => sum + mf.profitLoss, 0);
+
+    const mfTodaysGainLoss = mutualFunds.reduce(
+      (sum, mf) => sum + (mf.todaysGainLoss ?? 0),
+      0,
+    );
 
     const totalInvestment = stockInvestment + mfInvestment;
 
@@ -87,6 +109,7 @@ export class DashboardService {
       ...stocks.map((stock) => ({
         name: stock.symbol,
         profitLoss: stock.profitLoss,
+        profitPercent: stock.profitPercent,
         currentValue: stock.currentValue,
         type: 'STOCK',
       })),
@@ -94,13 +117,14 @@ export class DashboardService {
       ...mutualFunds.map((fund) => ({
         name: fund.fundName,
         profitLoss: fund.profitLoss,
+        profitPercent: fund.profitPercent,
         currentValue: fund.currentValue,
         type: 'MF',
       })),
     ];
 
     const sortedAssets = [...assets].sort(
-      (a, b) => b.profitLoss - a.profitLoss,
+      (a, b) => b.profitPercent - a.profitPercent,
     );
 
     const topGainer = sortedAssets.length > 0 ? sortedAssets[0] : null;
@@ -127,6 +151,8 @@ export class DashboardService {
 
       profitPercentage,
 
+      todaysGainLoss: stockTodaysGainLoss + mfTodaysGainLoss,
+
       totalStocks: stocks.length,
 
       totalMutualFunds: mutualFunds.length,
@@ -134,6 +160,12 @@ export class DashboardService {
       topGainer,
 
       topLoser,
+
+      topGainers: sortedAssets.slice(0, 5),
+
+      topLosers: [...sortedAssets].reverse().slice(0, 5),
+
+      recentTransactions,
 
       allocation: {
         stocks: stockAllocation,

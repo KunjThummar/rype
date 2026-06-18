@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class AppTheme {
+class AppColors {
   static const lightBackground = Color(0xFFFFFFFF);
   static const lightCard = Color(0xFFFFFFFF);
   static const lightSurface = Color(0xFFF8FAFC);
@@ -17,6 +17,81 @@ class AppTheme {
   static const darkSuccess = Color(0xFF22C55E);
   static const darkWarning = Color(0xFFFBBF24);
   static const darkError = Color(0xFFEF4444);
+}
+
+class AppSpacing {
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 16.0;
+  static const xl = 24.0;
+  static const xxl = 32.0;
+
+  static const pagePadding = EdgeInsets.all(lg);
+  static const cardPadding = EdgeInsets.all(lg);
+}
+
+class AppTextStyles {
+  static TextTheme build(Color onSurface, Color muted) {
+    return TextTheme(
+      headlineLarge: TextStyle(
+        color: onSurface,
+        fontSize: 30,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+      ),
+      headlineMedium: TextStyle(
+        color: onSurface,
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+      ),
+      titleLarge: TextStyle(
+        color: onSurface,
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+      ),
+      titleMedium: TextStyle(
+        color: onSurface,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      ),
+      titleSmall: TextStyle(
+        color: muted,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      ),
+      bodyLarge: TextStyle(color: onSurface, fontSize: 16),
+      bodyMedium: TextStyle(color: onSurface, fontSize: 14),
+      bodySmall: TextStyle(color: muted, fontSize: 12),
+      labelLarge: TextStyle(
+        color: onSurface,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class AppTheme {
+  static const lightBackground = AppColors.lightBackground;
+  static const lightCard = AppColors.lightCard;
+  static const lightSurface = AppColors.lightSurface;
+  static const lightPrimary = AppColors.lightPrimary;
+  static const lightSuccess = AppColors.lightSuccess;
+  static const lightWarning = AppColors.lightWarning;
+  static const lightError = AppColors.lightError;
+
+  static const darkBackground = AppColors.darkBackground;
+  static const darkCard = AppColors.darkCard;
+  static const darkSurface = AppColors.darkSurface;
+  static const darkPrimary = AppColors.darkPrimary;
+  static const darkSuccess = AppColors.darkSuccess;
+  static const darkWarning = AppColors.darkWarning;
+  static const darkError = AppColors.darkError;
 
   static ThemeData light() {
     return _theme(
@@ -106,8 +181,9 @@ class AppTheme {
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: background,
-          systemNavigationBarIconBrightness:
-              isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
         titleTextStyle: TextStyle(
           color: onSurface,
@@ -135,8 +211,10 @@ class AppTheme {
         hintStyle: TextStyle(color: muted, fontSize: 14),
         prefixIconColor: muted,
         suffixIconColor: muted,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
@@ -190,53 +268,16 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFF0F172A),
+        backgroundColor: isDark
+            ? const Color(0xFF020617)
+            : const Color(0xFF0F172A),
         contentTextStyle: const TextStyle(color: Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       dividerTheme: DividerThemeData(
         color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
       ),
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(
-          color: onSurface,
-          fontSize: 30,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-        headlineMedium: TextStyle(
-          color: onSurface,
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-        titleLarge: TextStyle(
-          color: onSurface,
-          fontSize: 20,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-        titleMedium: TextStyle(
-          color: onSurface,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        titleSmall: TextStyle(
-          color: muted,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        bodyLarge: TextStyle(color: onSurface, fontSize: 16),
-        bodyMedium: TextStyle(color: onSurface, fontSize: 14),
-        bodySmall: TextStyle(color: muted, fontSize: 12),
-        labelLarge: TextStyle(
-          color: onSurface,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      textTheme: AppTextStyles.build(onSurface, muted),
     );
   }
 }
@@ -323,6 +364,5 @@ class FinanceColors extends ThemeExtension<FinanceColors> {
 }
 
 extension FinanceTheme on BuildContext {
-  FinanceColors get finance =>
-      Theme.of(this).extension<FinanceColors>()!;
+  FinanceColors get finance => Theme.of(this).extension<FinanceColors>()!;
 }

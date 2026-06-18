@@ -95,11 +95,22 @@ export class StocksService {
         stock.symbol,
       );
 
+      if (marketData.price === null || marketData.price <= 0) {
+        continue;
+      }
+
       stock.currentPrice = marketData.price;
 
       stock.currentValue = stock.currentPrice * stock.quantity;
 
       stock.profitLoss = stock.currentValue - stock.investmentAmount;
+
+      stock.profitPercent =
+        stock.investmentAmount > 0
+          ? (stock.profitLoss / stock.investmentAmount) * 100
+          : 0;
+
+      stock.todaysGainLoss = (marketData.change ?? 0) * stock.quantity;
 
       await stock.save();
     }

@@ -10,6 +10,10 @@ import {
 } from '../mutual-funds/schemas/mutual-fund.schema';
 
 import { BenchmarkModule } from '../benchmark/benchmark.module';
+import {
+  Transaction,
+  TransactionSchema,
+} from '../transactions/schemas/transaction.schema';
 
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
@@ -24,6 +28,10 @@ import { DashboardService } from './dashboard.service';
       {
         name: MutualFund.name,
         schema: MutualFundSchema,
+      },
+      {
+        name: Transaction.name,
+        schema: TransactionSchema,
       },
     ]),
 

@@ -40,11 +40,7 @@ export class MutualFundsService {
   }
 
   async getNav(amfiCode: string) {
-    return {
-      amfiCode,
-      nav: 0,
-      source: 'placeholder',
-    };
+    return this.marketDataService.getNav(amfiCode);
   }
 
   async findOne(id: string) {
@@ -68,6 +64,10 @@ export class MutualFundsService {
 
     for (const fund of funds) {
       const navData = await this.marketDataService.getNav(fund.amfiCode);
+
+      if (navData.nav === null || navData.nav <= 0) {
+        continue;
+      }
 
       fund.currentNav = navData.nav;
 

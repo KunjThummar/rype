@@ -57,6 +57,11 @@ export class MutualFund {
     default: 0,
   })
   profitPercent: number;
+
+  @Prop({
+    default: 0,
+  })
+  todaysGainLoss: number;
 }
 
 export const MutualFundSchema = SchemaFactory.createForClass(MutualFund);

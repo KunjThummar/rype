@@ -9,9 +9,15 @@ String formatCurrency(num value) {
   final amount = value.toDouble();
   final prefix = amount < 0 ? '-₹' : '₹';
   final absolute = amount.abs();
-  if (absolute >= 10000000) return '$prefix${(absolute / 10000000).toStringAsFixed(2)} Cr';
-  if (absolute >= 100000) return '$prefix${(absolute / 100000).toStringAsFixed(2)} L';
-  if (absolute >= 1000) return '$prefix${(absolute / 1000).toStringAsFixed(2)} K';
+  if (absolute >= 10000000) {
+    return '$prefix${(absolute / 10000000).toStringAsFixed(2)} Cr';
+  }
+  if (absolute >= 100000) {
+    return '$prefix${(absolute / 100000).toStringAsFixed(2)} L';
+  }
+  if (absolute >= 1000) {
+    return '$prefix${(absolute / 1000).toStringAsFixed(2)} K';
+  }
   return '$prefix${absolute.toStringAsFixed(2)}';
 }
 
@@ -44,15 +50,34 @@ class PremiumScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: showBack,
-        title: Text(title),
-        actions: actions,
-      ),
-      body: SafeArea(
-        child: child,
-      ),
+      appBar: CustomAppBar(title: title, showBack: showBack, actions: actions),
+      body: SafeArea(child: child),
       floatingActionButton: floatingActionButton,
+    );
+  }
+}
+
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const CustomAppBar({
+    super.key,
+    required this.title,
+    this.actions = const [],
+    this.showBack = true,
+  });
+
+  final String title;
+  final List<Widget> actions;
+  final bool showBack;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      automaticallyImplyLeading: showBack,
+      title: Text(title),
+      actions: actions,
     );
   }
 }
@@ -70,7 +95,9 @@ class ThemeToggleButton extends StatelessWidget {
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
         child: Icon(
-          controller.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+          controller.isDark
+              ? Icons.light_mode_outlined
+              : Icons.dark_mode_outlined,
           key: ValueKey(controller.isDark),
         ),
       ),
@@ -115,7 +142,102 @@ class FinanceCard extends StatelessWidget {
       child: Padding(padding: padding, child: child),
     );
     if (onTap == null) return card;
-    return InkWell(borderRadius: BorderRadius.circular(8), onTap: onTap, child: card);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: card,
+    );
+  }
+}
+
+class PrimaryCard extends FinanceCard {
+  const PrimaryCard({
+    super.key,
+    required super.child,
+    super.padding,
+    super.onTap,
+  });
+}
+
+class PrimaryButton extends StatelessWidget {
+  const PrimaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.loading = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = loading
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Text(label);
+
+    return SizedBox(
+      width: double.infinity,
+      child: icon == null
+          ? ElevatedButton(
+              onPressed: loading ? null : onPressed,
+              child: content,
+            )
+          : ElevatedButton.icon(
+              onPressed: loading ? null : onPressed,
+              icon: loading ? const SizedBox.shrink() : Icon(icon),
+              label: content,
+            ),
+    );
+  }
+}
+
+class CustomTextField extends StatelessWidget {
+  const CustomTextField({
+    super.key,
+    this.controller,
+    this.label,
+    this.hint,
+    this.prefixIcon,
+    this.keyboardType,
+    this.obscureText = false,
+    this.validator,
+    this.onChanged,
+    this.textInputAction,
+  });
+
+  final TextEditingController? controller;
+  final String? label;
+  final String? hint;
+  final IconData? prefixIcon;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+  final String? Function(String?)? validator;
+  final ValueChanged<String>? onChanged;
+  final TextInputAction? textInputAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      validator: validator,
+      onChanged: onChanged,
+      textInputAction: textInputAction,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
+      ),
+    );
   }
 }
 
@@ -256,8 +378,13 @@ class _PiePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     if (total <= 0) {
       stroke.color = colors.first.withValues(alpha: 0.18);
-      canvas.drawArc(rect.deflate(stroke.strokeWidth / 2), -math.pi / 2,
-          math.pi * 2, false, stroke);
+      canvas.drawArc(
+        rect.deflate(stroke.strokeWidth / 2),
+        -math.pi / 2,
+        math.pi * 2,
+        false,
+        stroke,
+      );
       return;
     }
     var start = -math.pi / 2;
@@ -336,10 +463,7 @@ class _LinePainter extends CustomPainter {
       ..lineTo(size.width, size.height)
       ..lineTo(0, size.height)
       ..close();
-    canvas.drawPath(
-      fill,
-      Paint()..color = color.withValues(alpha: 0.10),
-    );
+    canvas.drawPath(fill, Paint()..color = color.withValues(alpha: 0.10));
     canvas.drawPath(
       path,
       Paint()
@@ -362,7 +486,9 @@ class BarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxValue = values.isEmpty ? 1 : values.map((e) => e.abs()).reduce(math.max);
+    final maxValue = values.isEmpty
+        ? 1
+        : values.map((e) => e.abs()).reduce(math.max);
     return Column(
       children: [
         for (var i = 0; i < values.length; i++) ...[
@@ -370,7 +496,10 @@ class BarChart extends StatelessWidget {
             children: [
               SizedBox(
                 width: 52,
-                child: Text(labels[i], style: Theme.of(context).textTheme.bodySmall),
+                child: Text(
+                  labels[i],
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
               Expanded(
                 child: ClipRRect(
@@ -408,6 +537,28 @@ class LoadingSkeleton extends StatefulWidget {
 
   @override
   State<LoadingSkeleton> createState() => _LoadingSkeletonState();
+}
+
+class LoadingWidget extends StatelessWidget {
+  const LoadingWidget({super.key, this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          if (message != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(message!, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _LoadingSkeletonState extends State<LoadingSkeleton>
@@ -496,7 +647,9 @@ class EmptyState extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: Theme.of(context).colorScheme.primary),
@@ -517,11 +670,7 @@ class EmptyState extends StatelessWidget {
 }
 
 class ErrorState extends StatelessWidget {
-  const ErrorState({
-    super.key,
-    required this.message,
-    required this.onRetry,
-  });
+  const ErrorState({super.key, required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -535,9 +684,16 @@ class ErrorState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_off_outlined, color: context.finance.danger, size: 42),
+              Icon(
+                Icons.cloud_off_outlined,
+                color: context.finance.danger,
+                size: 42,
+              ),
               const SizedBox(height: 12),
-              Text('Unable to load data', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Unable to load data',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 6),
               Text(
                 message,
@@ -556,4 +712,12 @@ class ErrorState extends StatelessWidget {
       ),
     );
   }
+}
+
+class AppErrorWidget extends ErrorState {
+  const AppErrorWidget({
+    super.key,
+    required super.message,
+    required super.onRetry,
+  });
 }

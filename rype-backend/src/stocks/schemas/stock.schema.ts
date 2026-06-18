@@ -59,6 +59,11 @@ export class Stock {
     default: 0,
   })
   profitPercent: number;
+
+  @Prop({
+    default: 0,
+  })
+  todaysGainLoss: number;
 }
 
 export const StockSchema = SchemaFactory.createForClass(Stock);
