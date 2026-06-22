@@ -6,6 +6,7 @@ import 'screens/add_mutual_fund_screen.dart';
 import 'screens/add_stock_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/holdings_screen.dart';
+import 'screens/intro_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/mutual_funds_screen.dart';
 import 'screens/register_screen.dart';
@@ -45,12 +46,21 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late Future<String?> _tokenCheck;
+  late Future<_StartupState> _startupCheck;
 
   @override
   void initState() {
     super.initState();
-    _tokenCheck = StorageService.getToken();
+    _startupCheck = _loadStartupState();
+  }
+
+  Future<_StartupState> _loadStartupState() async {
+    final token = await StorageService.getToken();
+    final hasCompletedIntro = await StorageService.hasCompletedIntro();
+    return _StartupState(
+      hasToken: token != null,
+      hasCompletedIntro: hasCompletedIntro,
+    );
   }
 
   @override
@@ -59,12 +69,12 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Rype - Investment Tracker',
+      title: 'Rype',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeController.mode,
-      home: FutureBuilder<String?>(
-        future: _tokenCheck,
+      home: FutureBuilder<_StartupState>(
+        future: _startupCheck,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
@@ -72,12 +82,14 @@ class _MyAppState extends State<MyApp> {
             );
           }
 
-          // Route to dashboard if token exists, else to login
-          final hasToken = snapshot.data != null;
-          return hasToken ? const DashboardScreen() : const LoginScreen();
+          final state = snapshot.data;
+          if (state?.hasToken ?? false) return const DashboardScreen();
+          if (state?.hasCompletedIntro ?? false) return const LoginScreen();
+          return const IntroScreen();
         },
       ),
       routes: {
+        '/intro': (context) => const IntroScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/dashboard': (context) => const DashboardScreen(),
@@ -93,4 +105,14 @@ class _MyAppState extends State<MyApp> {
       },
     );
   }
+}
+
+class _StartupState {
+  const _StartupState({
+    required this.hasToken,
+    required this.hasCompletedIntro,
+  });
+
+  final bool hasToken;
+  final bool hasCompletedIntro;
 }
