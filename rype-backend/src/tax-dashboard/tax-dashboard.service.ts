@@ -71,6 +71,28 @@ export class TaxDashboardService {
       effectiveTax,
 
       taxEfficiency,
+
+      indianTaxRules: {
+        equity: {
+          stcgHoldingPeriodDays: 365,
+          stcgRate: 0.2,
+          ltcgRate: 0.125,
+          ltcgNote:
+            'Equity LTCG exemption threshold should be applied during final tax filing.',
+        },
+        mutualFunds: {
+          equityOrientedHoldingPeriodDays: 365,
+          debtFundNote:
+            'Debt mutual fund tax treatment depends on purchase date and prevailing indexation rules.',
+        },
+      },
+
+      realTimeEstimate: {
+        stcgTax,
+        ltcgTax,
+        effectiveTax,
+        estimatedPayable: effectiveTax,
+      },
     };
   }
 }

@@ -273,6 +273,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 route: '/holdings',
               ),
               _ActionTile(
+                icon: Icons.upload_file_outlined,
+                label: 'Import Portfolio',
+                route: '/imports',
+              ),
+              _ActionTile(
                 icon: Icons.receipt_long_rounded,
                 label: 'Transactions',
                 route: '/transactions',

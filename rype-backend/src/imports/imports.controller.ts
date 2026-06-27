@@ -1,60 +1,80 @@
 import {
+  BadRequestException,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-
 import { FileInterceptor } from '@nestjs/platform-express';
-
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
 import { ImportsService } from './imports.service';
 
+const MAX_IMPORT_FILE_SIZE = 12 * 1024 * 1024;
+const ALLOWED_IMPORT_EXTENSIONS = [
+  '.csv',
+  '.xlsx',
+  '.pdf',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+];
+
 @Controller('imports')
+@UseGuards(JwtAuthGuard)
 export class ImportsController {
   constructor(private importsService: ImportsService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
+      storage: memoryStorage(),
+      limits: {
+        fileSize: MAX_IMPORT_FILE_SIZE,
+      },
+      fileFilter: (_req, file, callback) => {
+        const fileName = file.originalname.toLowerCase();
+        const allowed = ALLOWED_IMPORT_EXTENSIONS.some((extension) =>
+          fileName.endsWith(extension),
+        );
 
-        filename: (req, file, callback) => {
-          callback(null, Date.now() + '-' + file.originalname);
-        },
-      }),
+        if (!allowed) {
+          callback(
+            new BadRequestException(
+              'Only CSV, XLSX, PDF, PNG, JPG, JPEG and WEBP files are supported.',
+            ),
+            false,
+          );
+          return;
+        }
+
+        callback(null, true);
+      },
     }),
   )
-  async upload(
-    @Req() req,
-
-    @UploadedFile()
-    file: Express.Multer.File,
-  ) {
-    return this.importsService.createJob({
-      userId: req.user.userId,
-
-      fileName: file.originalname,
-
-      filePath: file.path,
-
-      importType: 'MANUAL_IMPORT',
-
-      status: 'PENDING',
-    });
+  upload(@Req() req, @UploadedFile() file: Express.Multer.File) {
+    return this.importsService.upload(req.user.userId, file);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  getJobs(@Req() req) {
-    return this.importsService.findAll(req.user.userId);
+  @Get('history')
+  getHistory(@Req() req) {
+    return this.importsService.findHistory(req.user.userId);
+  }
+
+  @Get(':id')
+  getImport(@Req() req, @Param('id') id: string) {
+    return this.importsService.findOne(req.user.userId, id);
+  }
+
+  @Delete(':id')
+  deleteImport(@Req() req, @Param('id') id: string) {
+    return this.importsService.delete(req.user.userId, id);
   }
 }

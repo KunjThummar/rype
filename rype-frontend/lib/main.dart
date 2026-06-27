@@ -7,6 +7,8 @@ import 'screens/add_stock_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/holdings_screen.dart';
 import 'screens/intro_screen.dart';
+import 'screens/import_history_screen.dart';
+import 'screens/import_portfolio_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/mutual_funds_screen.dart';
 import 'screens/register_screen.dart';
@@ -100,6 +102,8 @@ class _MyAppState extends State<MyApp> {
         '/add-mutual-fund': (context) => const AddMutualFundScreen(),
         '/transactions': (context) => const TransactionsScreen(),
         '/holdings': (context) => const HoldingsScreen(),
+        '/imports': (context) => const ImportPortfolioScreen(),
+        '/imports/history': (context) => const ImportHistoryScreen(),
         '/tax-dashboard': (context) => const TaxDashboardScreen(),
         '/what-if': (context) => const WhatIfScreen(),
       },

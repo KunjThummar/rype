@@ -24,6 +24,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { ImportsModule } from './imports/imports.module';
+import { PortfolioIntelligenceModule } from './portfolio-intelligence/portfolio-intelligence.module';
 
 @Module({
   imports: [
@@ -105,6 +106,8 @@ import { ImportsModule } from './imports/imports.module';
     AlertsModule,
 
     ImportsModule,
+
+    PortfolioIntelligenceModule,
   ],
   controllers: [HealthController],
 })

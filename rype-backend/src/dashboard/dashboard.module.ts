@@ -14,6 +14,7 @@ import {
   Transaction,
   TransactionSchema,
 } from '../transactions/schemas/transaction.schema';
+import { Dividend, DividendSchema } from '../dividends/schemas/dividend.schema';
 
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
@@ -32,6 +33,10 @@ import { DashboardService } from './dashboard.service';
       {
         name: Transaction.name,
         schema: TransactionSchema,
+      },
+      {
+        name: Dividend.name,
+        schema: DividendSchema,
       },
     ]),
 

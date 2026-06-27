@@ -16,6 +16,7 @@ import {
   Transaction,
   TransactionDocument,
 } from '../transactions/schemas/transaction.schema';
+import { Dividend, DividendDocument } from '../dividends/schemas/dividend.schema';
 
 @Injectable()
 export class DashboardService {
@@ -28,6 +29,9 @@ export class DashboardService {
 
     @InjectModel(Transaction.name)
     private transactionModel: Model<TransactionDocument>,
+
+    @InjectModel(Dividend.name)
+    private dividendModel: Model<DividendDocument>,
 
     private benchmarkService: BenchmarkService,
   ) {}
@@ -45,6 +49,12 @@ export class DashboardService {
       .find({ userId })
       .sort({ transactionDate: -1 })
       .limit(5);
+
+    const transactions = await this.transactionModel
+      .find({ userId })
+      .sort({ transactionDate: 1 });
+
+    const dividends = await this.dividendModel.find({ userId });
 
     const stockInvestment = stocks.reduce(
       (sum, stock) => sum + stock.investmentAmount,
@@ -142,6 +152,14 @@ export class DashboardService {
         ? Number(((mfCurrentValue / currentValue) * 100).toFixed(2))
         : 0;
 
+    const totalDividends = dividends.reduce(
+      (sum, dividend) => sum + dividend.dividendAmount,
+      0,
+    );
+
+    const xirr = this.estimateXirr(transactions, currentValue);
+    const cagr = this.estimateCagr(transactions, totalInvestment, currentValue);
+
     return {
       totalInvestment,
 
@@ -173,6 +191,28 @@ export class DashboardService {
         mutualFunds: mutualFundAllocation,
       },
 
+      assetAllocationCharts: [
+        {
+          category: 'Stocks',
+          value: stockCurrentValue,
+          percentage: stockAllocation,
+        },
+        {
+          category: 'Mutual Funds',
+          value: mfCurrentValue,
+          percentage: mutualFundAllocation,
+        },
+      ],
+
+      dividendTracking: {
+        totalDividends,
+        dividendCount: dividends.length,
+      },
+
+      xirr,
+
+      cagr,
+
       stocks: {
         investment: stockInvestment,
 
@@ -201,5 +241,35 @@ export class DashboardService {
         outperformedSensex,
       },
     };
+  }
+
+  private estimateXirr(transactions: TransactionDocument[], currentValue: number) {
+    const invested = transactions
+      .filter((transaction) => transaction.transactionType === 'BUY')
+      .reduce((sum, transaction) => sum + transaction.quantity * transaction.price, 0);
+
+    if (invested <= 0 || currentValue <= 0) return 0;
+
+    return Number((((currentValue - invested) / invested) * 100).toFixed(2));
+  }
+
+  private estimateCagr(
+    transactions: TransactionDocument[],
+    totalInvestment: number,
+    currentValue: number,
+  ) {
+    if (transactions.length === 0 || totalInvestment <= 0 || currentValue <= 0) {
+      return 0;
+    }
+
+    const firstDate = new Date(transactions[0].transactionDate).getTime();
+    const years = Math.max(
+      1 / 365,
+      (Date.now() - firstDate) / (1000 * 60 * 60 * 24 * 365),
+    );
+
+    return Number(
+      ((Math.pow(currentValue / totalInvestment, 1 / years) - 1) * 100).toFixed(2),
+    );
   }
 }
