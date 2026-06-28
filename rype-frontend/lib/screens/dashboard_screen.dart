@@ -165,7 +165,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final wide = constraints.maxWidth >= 760;
               final cards = [
                 _AllocationCard(stockValue: stockValue, mfValue: mfValue),
-                _GrowthCard(currentValue: summary.currentValue),
+                _GrowthCard(
+                  totalInvestment: summary.totalInvestment,
+                  currentValue: summary.currentValue,
+                ),
                 _PerformanceCard(profitPercentage: summary.profitPercentage),
               ];
               if (!wide) {
@@ -194,25 +197,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             itemHeight: 110,
             children: [
               MetricCard(
-                label: 'Diversification Score',
-                value: '82/100',
-                subtitle: 'Balanced exposure',
-                icon: Icons.hub_outlined,
-                accent: context.finance.success,
+                label: 'XIRR',
+                value: '${summary.xirr >= 0 ? '+' : ''}${summary.xirr.toStringAsFixed(2)}%',
+                subtitle: 'Internal Rate of Return',
+                icon: Icons.show_chart_rounded,
+                accent: summary.xirr >= 0 ? context.finance.success : context.finance.danger,
               ),
               MetricCard(
-                label: 'Risk Score',
-                value: 'Moderate',
-                subtitle: 'Volatility controlled',
-                icon: Icons.shield_outlined,
-                accent: context.finance.warning,
+                label: 'CAGR',
+                value: '${summary.cagr >= 0 ? '+' : ''}${summary.cagr.toStringAsFixed(2)}%',
+                subtitle: 'Compound Annual Growth',
+                icon: Icons.trending_up_rounded,
+                accent: summary.cagr >= 0 ? context.finance.success : context.finance.danger,
               ),
               MetricCard(
-                label: 'Portfolio Health',
-                value: 'Good',
-                subtitle: 'Review monthly',
-                icon: Icons.health_and_safety_outlined,
-                accent: Theme.of(context).colorScheme.primary,
+                label: 'vs Nifty 50',
+                value: summary.benchmarkComparison.outperformedNifty ? 'Outperformed' : 'Underperformed',
+                subtitle: 'Nifty 50: ${summary.benchmarkComparison.niftyReturn.toStringAsFixed(1)}%',
+                icon: Icons.compare_arrows_rounded,
+                accent: summary.benchmarkComparison.outperformedNifty
+                    ? context.finance.success
+                    : context.finance.warning,
               ),
             ],
           ),
@@ -428,13 +433,32 @@ class _AllocationCard extends StatelessWidget {
 }
 
 class _GrowthCard extends StatelessWidget {
-  const _GrowthCard({required this.currentValue});
+  const _GrowthCard({required this.totalInvestment, required this.currentValue});
 
+  final double totalInvestment;
   final double currentValue;
 
   @override
   Widget build(BuildContext context) {
-    final base = currentValue <= 0 ? 100000.0 : currentValue * 0.78;
+    if (totalInvestment <= 0) {
+      return FinanceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Portfolio Growth',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            const LineTrendChart(
+              values: [0.0, 0.0],
+            ),
+          ],
+        ),
+      );
+    }
+
+    final step = (currentValue - totalInvestment) / 5;
     return FinanceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,12 +470,12 @@ class _GrowthCard extends StatelessWidget {
           const SizedBox(height: 16),
           LineTrendChart(
             values: [
-              base,
-              base * 1.04,
-              base * 0.99,
-              base * 1.11,
-              base * 1.16,
-              currentValue <= 0 ? base * 1.22 : currentValue,
+              totalInvestment,
+              totalInvestment + step,
+              totalInvestment + step * 2,
+              totalInvestment + step * 3,
+              totalInvestment + step * 4,
+              currentValue,
             ],
           ),
         ],
@@ -467,6 +491,14 @@ class _PerformanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final values = profitPercentage == 0
+        ? [0.0, 0.0, 0.0, 0.0]
+        : [
+            profitPercentage * 0.15,
+            profitPercentage * 0.45,
+            profitPercentage * 0.75,
+            profitPercentage,
+          ];
     return FinanceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +510,7 @@ class _PerformanceCard extends StatelessWidget {
           const SizedBox(height: 16),
           BarChart(
             labels: const ['1W', '1M', '3M', '1Y'],
-            values: [1.2, 3.8, profitPercentage / 2, profitPercentage],
+            values: values,
           ),
         ],
       ),

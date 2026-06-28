@@ -127,7 +127,7 @@ class _TaxDashboardScreenState extends State<TaxDashboardScreen> {
                 Text('Portfolio Health Score', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 LinearProgressIndicator(
-                  value: totalTax <= 0 ? 0.88 : (1 - (totalTax / (stcg.abs() + ltcg.abs()).clamp(1, double.infinity))).clamp(0.0, 1.0),
+                  value: totalTax <= 0 ? 1.0 : (1 - (totalTax / (stcg.abs() + ltcg.abs()).clamp(1, double.infinity))).clamp(0.0, 1.0),
                   minHeight: 10,
                   color: context.finance.success,
                   backgroundColor: context.finance.pageSurface,

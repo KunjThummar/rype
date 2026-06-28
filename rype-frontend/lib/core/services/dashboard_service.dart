@@ -15,6 +15,9 @@ class DashboardSummary {
   final List<DashboardAsset> topGainers;
   final List<DashboardAsset> topLosers;
   final List<DashboardTransaction> recentTransactions;
+  final double xirr;
+  final double cagr;
+  final BenchmarkComparison benchmarkComparison;
 
   DashboardSummary({
     required this.totalInvestment,
@@ -28,6 +31,9 @@ class DashboardSummary {
     required this.topGainers,
     required this.topLosers,
     required this.recentTransactions,
+    required this.xirr,
+    required this.cagr,
+    required this.benchmarkComparison,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -52,6 +58,11 @@ class DashboardSummary {
       topGainers: _assets(json['topGainers']),
       topLosers: _assets(json['topLosers']),
       recentTransactions: _transactions(json['recentTransactions']),
+      xirr: (json['xirr'] as num?)?.toDouble() ?? 0.0,
+      cagr: (json['cagr'] as num?)?.toDouble() ?? 0.0,
+      benchmarkComparison: BenchmarkComparison.fromJson(
+        Map<String, dynamic>.from(json['benchmarkComparison'] ?? {}),
+      ),
     );
   }
 
@@ -72,6 +83,32 @@ class DashboardSummary {
               DashboardTransaction.fromJson(Map<String, dynamic>.from(item)),
         )
         .toList();
+  }
+}
+
+class BenchmarkComparison {
+  final double portfolioReturn;
+  final double niftyReturn;
+  final double sensexReturn;
+  final bool outperformedNifty;
+  final bool outperformedSensex;
+
+  BenchmarkComparison({
+    required this.portfolioReturn,
+    required this.niftyReturn,
+    required this.sensexReturn,
+    required this.outperformedNifty,
+    required this.outperformedSensex,
+  });
+
+  factory BenchmarkComparison.fromJson(Map<String, dynamic> json) {
+    return BenchmarkComparison(
+      portfolioReturn: (json['portfolioReturn'] as num?)?.toDouble() ?? 0.0,
+      niftyReturn: (json['niftyReturn'] as num?)?.toDouble() ?? 0.0,
+      sensexReturn: (json['sensexReturn'] as num?)?.toDouble() ?? 0.0,
+      outperformedNifty: json['outperformedNifty'] as bool? ?? false,
+      outperformedSensex: json['outperformedSensex'] as bool? ?? false,
+    );
   }
 }
 
