@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
@@ -211,6 +212,7 @@ class CustomTextField extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.textInputAction,
+    this.inputFormatters,
   });
 
   final TextEditingController? controller;
@@ -222,6 +224,7 @@ class CustomTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
   final TextInputAction? textInputAction;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -232,6 +235,7 @@ class CustomTextField extends StatelessWidget {
       validator: validator,
       onChanged: onChanged,
       textInputAction: textInputAction,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
