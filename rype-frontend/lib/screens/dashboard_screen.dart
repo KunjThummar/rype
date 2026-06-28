@@ -165,10 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final wide = constraints.maxWidth >= 760;
               final cards = [
                 _AllocationCard(stockValue: stockValue, mfValue: mfValue),
-                _GrowthCard(
-                  totalInvestment: summary.totalInvestment,
-                  currentValue: summary.currentValue,
-                ),
+                _BenchmarkCard(comparison: summary.benchmarkComparison),
                 _PerformanceCard(profitPercentage: summary.profitPercentage),
               ];
               if (!wide) {
@@ -268,14 +265,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 route: '/stocks',
               ),
               _ActionTile(
-                icon: Icons.account_balance_rounded,
-                label: 'Mutual Funds',
-                route: '/mutual-funds',
-              ),
-              _ActionTile(
                 icon: Icons.pie_chart_outline_rounded,
                 label: 'Holdings',
                 route: '/holdings',
+              ),
+              _ActionTile(
+                icon: Icons.calculate_outlined,
+                label: 'What-If Analysis',
+                route: '/what-if',
               ),
               _ActionTile(
                 icon: Icons.upload_file_outlined,
@@ -283,19 +280,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 route: '/imports',
               ),
               _ActionTile(
-                icon: Icons.receipt_long_rounded,
-                label: 'Transactions',
-                route: '/transactions',
-              ),
-              _ActionTile(
-                icon: Icons.request_quote_outlined,
-                label: 'Tax Dashboard',
-                route: '/tax-dashboard',
-              ),
-              _ActionTile(
-                icon: Icons.calculate_outlined,
-                label: 'What-If Analysis',
-                route: '/what-if',
+                icon: Icons.grid_view_rounded,
+                label: 'More Utilities',
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (context) {
+                      return SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'More Utilities',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              ResponsiveGrid(
+                                minItemWidth: 140,
+                                itemHeight: 90,
+                                children: [
+                                  _ActionTile(
+                                    icon: Icons.account_balance_rounded,
+                                    label: 'Mutual Funds',
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      Navigator.pushNamed(context, '/mutual-funds');
+                                    },
+                                  ),
+                                  _ActionTile(
+                                    icon: Icons.receipt_long_rounded,
+                                    label: 'Transactions',
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      Navigator.pushNamed(context, '/transactions');
+                                    },
+                                  ),
+                                  _ActionTile(
+                                    icon: Icons.request_quote_outlined,
+                                    label: 'Tax Dashboard',
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      Navigator.pushNamed(context, '/tax-dashboard');
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
@@ -432,50 +484,28 @@ class _AllocationCard extends StatelessWidget {
   }
 }
 
-class _GrowthCard extends StatelessWidget {
-  const _GrowthCard({required this.totalInvestment, required this.currentValue});
+class _BenchmarkCard extends StatelessWidget {
+  const _BenchmarkCard({required this.comparison});
 
-  final double totalInvestment;
-  final double currentValue;
+  final BenchmarkComparison comparison;
 
   @override
   Widget build(BuildContext context) {
-    if (totalInvestment <= 0) {
-      return FinanceCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Portfolio Growth',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            const LineTrendChart(
-              values: [0.0, 0.0],
-            ),
-          ],
-        ),
-      );
-    }
-
-    final step = (currentValue - totalInvestment) / 5;
     return FinanceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Portfolio Growth',
+            'vs Benchmarks (1Y)',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 16),
-          LineTrendChart(
+          BarChart(
+            labels: const ['Portfolio', 'Nifty 50', 'Sensex'],
             values: [
-              totalInvestment,
-              totalInvestment + step,
-              totalInvestment + step * 2,
-              totalInvestment + step * 3,
-              totalInvestment + step * 4,
-              currentValue,
+              comparison.portfolioReturn,
+              comparison.niftyReturn,
+              comparison.sensexReturn,
             ],
           ),
         ],
@@ -629,17 +659,23 @@ class _ActionTile extends StatelessWidget {
   const _ActionTile({
     required this.icon,
     required this.label,
-    required this.route,
+    this.route,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final String route;
+  final String? route;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return FinanceCard(
-      onTap: () => Navigator.pushNamed(context, route),
+      onTap: onTap ?? () {
+        if (route != null) {
+          Navigator.pushNamed(context, route!);
+        }
+      },
       child: Row(
         children: [
           Icon(icon, color: Theme.of(context).colorScheme.primary),
