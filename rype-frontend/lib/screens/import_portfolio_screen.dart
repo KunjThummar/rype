@@ -23,15 +23,13 @@ class _ImportPortfolioScreenState extends State<ImportPortfolioScreen> {
 
   Future<void> _pickFile() async {
     setState(() => _error = null);
-    final result = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['csv', 'xlsx'],
-      withData: false,
     );
 
-    if (!mounted || result == null || result.files.isEmpty) return;
+    if (!mounted || file == null) return;
 
-    final file = result.files.single;
     if (file.path == null) {
       setState(() {
         _error = 'This file picker did not provide a local file path.';
